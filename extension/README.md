@@ -21,3 +21,14 @@ Native in-editor telemetry extension for **Google Antigravity IDE**. Gain deep r
 ## Architecture
 
 This extension interacts with local Antigravity session SQLite databases located in `~/.gemini/antigravity-ide/conversations/` and processes protobuf turn frames using `node:sqlite`. Zero cloud uploads or external telemetry tracking; everything remains 100% private and on-device.
+
+## 💡 Inspiration & Credits
+
+This project was inspired by [neuland/tokendashboard-frontend](https://github.com/neuland/tokendashboard-frontend), expanding the concept into a native in-IDE extension with environmental (CO₂e) metrics, turn-by-turn trajectory inspection, and autonomous daemon management.
+
+### 🤖 Author's Note: Built 99% with AI
+
+> **"A note on how this was made:**  
+> I am not a professional software developer or programmer. This entire project—from the SQLite reverse-engineering and Protobuf parsing to the custom canvas timeline charts, the in-IDE extension architecture, and the automated packaging—was **99% created with AI** (using Google Antigravity IDE and its agentic pair programming assistant).  
+> It stands as a real-world testament to what modern agentic AI can build when guided by an idea, iterative feedback, and pair programming."
+

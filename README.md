@@ -137,6 +137,33 @@ This repository includes a pre-configured GitHub Actions workflow (`.github/work
 
 ---
 
+## 💡 Inspiration & Relationship to tokendashboard-frontend
+
+This project was directly inspired by the excellent concept and work in [neuland/tokendashboard-frontend](https://github.com/neuland/tokendashboard-frontend), which originally showcased the value of visualizing LLM token usage patterns.
+
+### How This Project Differs
+While inspired by that concept, this project was architected and built from scratch specifically for the **Google Antigravity IDE** ecosystem:
+
+1. **Native In-Editor Extension**: Rather than functioning solely as an external browser app, this project is fully integrated into Antigravity IDE and VS Code as a native extension:
+   - Dedicated **Activity Bar sidebar panel** with 6 Live KPI cards and instant range filters.
+   - An in-editor **Webview tab** for deep visual analysis.
+   - A real-time **Status Bar counter** that stays visible across all files and workspaces.
+2. **Direct Antigravity SQLite Engine**: Interfaces directly with Antigravity IDE's local conversation SQLite databases (`~/.gemini/antigravity-ide/conversations/*.db`) using Node's built-in `node:sqlite`, with zero external dependencies and zero cloud logging.
+3. **Environmental Impact & CO₂e Telemetry**: Introduces carbon emissions estimations based on Google Cloud datacenter PUE (~1.10), clean energy grid matching, and IEA benchmarks (0.25 gCO₂e per 1,000 tokens), complete with real-world equivalents (kilometers driven, smartphone charges, video streaming hours).
+4. **Autonomous Daemon Lifecycle**: Automatically spawns and monitors a local background telemetry daemon with auto-reconnection and zero manual configuration required.
+5. **Zero-Dependency Architecture**: Built in pure vanilla JavaScript, HTML5 Canvas, and modern CSS—eliminating heavy framework bundles and external npm dependencies.
+
+---
+
+### 🤖 Author's Note: Built 99% with AI
+
+> **"A note on how this was made:**  
+> I am not a professional software developer or programmer. This entire project—from the SQLite telemetry analysis and Protobuf parsing to the custom canvas timeline charts, the in-IDE extension architecture, and the automated packaging—was **99% created with AI** (using Google Antigravity IDE and its agentic pair programming assistant).
+>
+> It stands as a real-world testament to what modern agentic AI can build when guided by an idea, iterative feedback, and pair programming."
+
+---
+
 ## 📄 License
 
 MIT License — see [LICENSE](LICENSE) for details.
