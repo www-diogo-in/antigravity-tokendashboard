@@ -1,0 +1,100 @@
+{
+  "name": "antigravity-tokendashboard",
+  "displayName": "Antigravity Token & Cost Intelligence",
+  "description": "Native in-IDE Token, Cost, Prompt Cache & CO2e intelligence dashboard for Antigravity IDE.",
+  "version": "1.0.0",
+  "publisher": "antigravity",
+  "author": "Diogo",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/www-diogo-in/antigravity-tokendashboard.git"
+  },
+  "categories": [
+    "Other",
+    "Visualization"
+  ],
+  "keywords": [
+    "antigravity",
+    "tokens",
+    "cost",
+    "analytics",
+    "dashboard",
+    "gemini",
+    "co2"
+  ],
+  "icon": "assets/icon.svg",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "main": "./extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "antigravity-tokendashboard-container",
+          "title": "Token Intelligence",
+          "icon": "assets/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "antigravity-tokendashboard-container": [
+        {
+          "type": "webview",
+          "id": "antigravity.tokenDashboardSidebar",
+          "name": "Token & Cost Intelligence",
+          "icon": "assets/icon.svg"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "antigravity.openTokenDashboard",
+        "title": "Open Token & Cost Dashboard",
+        "category": "Antigravity",
+        "icon": "$(dashboard)"
+      },
+      {
+        "command": "antigravity.refreshTokenTelemetry",
+        "title": "Refresh Token Telemetry",
+        "category": "Antigravity",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "antigravity.restartTokenServer",
+        "title": "Restart Token Dashboard Server",
+        "category": "Antigravity",
+        "icon": "$(sync)"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "antigravity.openTokenDashboard"
+        },
+        {
+          "command": "antigravity.refreshTokenTelemetry"
+        },
+        {
+          "command": "antigravity.restartTokenServer"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "antigravity.openTokenDashboard",
+          "when": "view == antigravity.tokenDashboardSidebar",
+          "group": "navigation"
+        },
+        {
+          "command": "antigravity.refreshTokenTelemetry",
+          "when": "view == antigravity.tokenDashboardSidebar",
+          "group": "navigation"
+        }
+      ]
+    }
+  }
+}

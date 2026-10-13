@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+dist-vsix/
+
+# Logs and environment
+*.log
+.env
+.env.*
+*.local
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+*.vsix

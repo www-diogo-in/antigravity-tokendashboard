@@ -1,0 +1,28 @@
+{
+  "name": "antigravity-tokendashboard",
+  "version": "1.0.0",
+  "description": "Native Token, Cost & CO2 Intelligence Dashboard for Google Antigravity IDE",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "open": "node server.js --open",
+    "report": "node cli-report.js"
+  },
+  "keywords": [
+    "antigravity",
+    "ide",
+    "tokens",
+    "llm",
+    "dashboard",
+    "cost-tracking",
+    "gemini"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/www-diogo-in/antigravity-tokendashboard.git"
+  },
+  "author": "Diogo",
+  "license": "MIT"
+}
