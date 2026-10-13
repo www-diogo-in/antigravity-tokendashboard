@@ -1,6 +1,8 @@
-# Antigravity IDE Token, Cost & CO₂ Intelligence
+# Antigravity IDE Token, CO2e and Cost Dashboard
 
 > **Native in-IDE and standalone real-time token telemetry, cost analytics, and carbon footprint monitor for Google Antigravity IDE.**
+>
+> 🌍 *This extension is part of a bigger project in Portugal at [#Pub | Hashtag Pub](https://pub.ong) to bring transparency and sustainability to digital advertising.*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Antigravity%20IDE%20%7C%20VS%20Code-purple.svg)](https://github.com)
@@ -37,10 +39,10 @@ Antigravity IDE handles millions of tokens through deep reasoning, code generati
 ## 📦 In-IDE Extension Installation
 
 ### Option A: Install via Pre-built VSIX
-1. Download or package `antigravity-tokendashboard-1.0.0.vsix`.
+1. Download or package `antigravity-tokendashboard-1.0.1.vsix` (or `www-diogo-in.antigravity-tokendashboard-1.0.1.vsix`).
 2. Run in terminal:
    ```bash
-   antigravity-ide --install-extension antigravity-tokendashboard-1.0.0.vsix
+   antigravity-ide --install-extension www-diogo-in.antigravity-tokendashboard-1.0.1.vsix
    ```
 3. In Antigravity IDE, press `Ctrl+Shift+P` -> `Developer: Reload Window`.
 
@@ -49,7 +51,7 @@ Antigravity IDE handles millions of tokens through deep reasoning, code generati
 git clone https://github.com/www-diogo-in/antigravity-tokendashboard.git
 cd antigravity-tokendashboard
 node build-vsix.js
-antigravity-ide --install-extension antigravity-tokendashboard-1.0.0.vsix --force
+antigravity-ide --install-extension www-diogo-in.antigravity-tokendashboard-1.0.1.vsix --force
 ```
 
 ---

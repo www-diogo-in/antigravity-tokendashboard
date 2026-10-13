@@ -1,7 +1,7 @@
 {
   "name": "antigravity-tokendashboard",
-  "version": "1.0.0",
-  "description": "Native Token, Cost & CO2 Intelligence Dashboard for Google Antigravity IDE",
+  "version": "1.0.1",
+  "description": "Native Token, Cost & CO2 Intelligence Dashboard for Google Antigravity IDE. Part of #Pub | Hashtag Pub (https://pub.ong) project for transparency and sustainability in digital advertising.",
   "main": "server.js",
   "type": "commonjs",
   "scripts": {

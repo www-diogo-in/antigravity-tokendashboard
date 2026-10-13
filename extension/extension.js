@@ -1,5 +1,5 @@
 /**
- * Antigravity Token, Cost & CO2 Intelligence Extension
+ * Antigravity IDE Token, CO2e and Cost Dashboard Extension
  * Native in-IDE Extension for Google Antigravity IDE
  */
 
@@ -110,7 +110,7 @@ async function updateStatusBar() {
     const md = new vscode.MarkdownString();
     md.isTrusted = true;
     md.supportHtml = true;
-    md.appendMarkdown(`### ⚡ Antigravity Token & Cost Intelligence (Last 30 Days)\n\n`);
+    md.appendMarkdown(`### ⚡ Antigravity IDE Token, CO2e and Cost Dashboard (Last 30 Days)\n\n`);
     md.appendMarkdown(`- **Period:** \`Last 30 Days\`\n`);
     md.appendMarkdown(`- **Total Tokens:** \`${(t.totalTokens || 0).toLocaleString()}\` (${tokens})\n`);
     md.appendMarkdown(`- **Cached Tokens:** \`${(t.cachedTokens || 0).toLocaleString()}\` (${hitRate} hit rate)\n`);
@@ -144,7 +144,7 @@ async function openDashboardPanel(context) {
 
   currentPanel = vscode.window.createWebviewPanel(
     'antigravityTokenDashboard',
-    'Antigravity Token & Cost Intelligence',
+    'Antigravity IDE Token, CO2e and Cost Dashboard',
     vscode.ViewColumn.One,
     {
       enableScripts: true,
@@ -173,7 +173,7 @@ function getWebviewHtml() {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; frame-src http://127.0.0.1:* http://localhost:*; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
-  <title>Antigravity Token & Cost Intelligence</title>
+  <title>Antigravity IDE Token, CO2e and Cost Dashboard</title>
   <style>
     * { box-sizing: border-box; }
     html, body {

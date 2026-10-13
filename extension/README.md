@@ -1,6 +1,9 @@
-# Antigravity Token, Cost & CO₂e Intelligence (In-IDE Extension)
+# Antigravity IDE Token, CO2e and Cost Dashboard
 
 Native in-editor telemetry extension for **Google Antigravity IDE**. Gain deep real-time visibility into token utilization, reasoning token overhead, prompt caching efficiency, Gemini model pricing, and datacenter carbon footprint (CO₂e) without ever leaving the IDE.
+
+> 🌍 **Part of the #Pub Initiative:**  
+> This extension is part of a bigger project in Portugal at [#Pub | Hashtag Pub](https://pub.ong) to bring transparency and sustainability to digital advertising.
 
 ## Features
 

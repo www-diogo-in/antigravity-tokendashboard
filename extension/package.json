@@ -1,8 +1,8 @@
 {
   "name": "antigravity-tokendashboard",
-  "displayName": "Antigravity Token & Cost Intelligence",
-  "description": "Native in-IDE Token, Cost, Prompt Cache & CO2e intelligence dashboard for Antigravity IDE.",
-  "version": "1.0.0",
+  "displayName": "Antigravity IDE Token, CO2e and Cost Dashboard",
+  "description": "Native in-IDE Token, Cost, Prompt Cache & CO2e intelligence dashboard for Antigravity IDE. This extension is part of a bigger project in Portugal at #Pub | Hashtag Pub (https://pub.ong) to bring transparency and sustainability to digital advertising.",
+  "version": "1.0.1",
   "publisher": "www-diogo-in",
   "author": "Diogo",
   "license": "MIT",
