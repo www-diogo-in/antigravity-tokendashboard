@@ -92,6 +92,51 @@ npm run report
 
 ---
 
+## 🏪 Visual Studio Marketplace & Open VSX Publishing Guide
+
+To make this extension searchable and installable directly from the **Extensions view (`Ctrl+Shift+X`)** in VS Code and Antigravity IDE:
+
+### 1. Visual Studio Marketplace
+1. **Create an Azure DevOps Organization**:
+   - Go to [dev.azure.com](https://dev.azure.com) and sign in with your Microsoft account.
+2. **Generate a Personal Access Token (PAT)**:
+   - In Azure DevOps, click **User settings** (top right) → **Personal access tokens** → **+ New Token**.
+   - Set Organization to: `All accessible organizations`.
+   - Set Scopes to: **Custom defined** → scroll to **Marketplace** → check **Manage**.
+   - Copy the generated token.
+3. **Register Publisher Account**:
+   - Go to the [Visual Studio Marketplace Management Portal](https://marketplace.visualstudio.com/manage).
+   - Click **Create publisher** and enter your Publisher ID (e.g. `diogo` or your organization name).
+   - Ensure the `"publisher"` field in `extension/package.json` matches this ID.
+4. **Publish**:
+   ```bash
+   cd extension
+   npx @vscode/vsce login <YOUR_PUBLISHER_ID>
+   npx @vscode/vsce publish
+   ```
+   *Or upload the pre-compiled `.vsix` manually through the Marketplace web portal!*
+
+### 2. Open VSX Registry (For Open-Source IDEs & Antigravity)
+1. Sign in to [open-vsx.org](https://open-vsx.org) with your GitHub account.
+2. Create your Namespace matching your publisher name.
+3. Generate an Access Token under your Profile Settings.
+4. Publish:
+   ```bash
+   cd extension
+   npx ovsx publish antigravity-tokendashboard.vsix -p <YOUR_OVSX_TOKEN>
+   ```
+
+### 3. Automated GitHub Actions CI/CD
+This repository includes a pre-configured GitHub Actions workflow (`.github/workflows/release.yml`).
+- To create a release automatically, simply tag your commit and push:
+  ```bash
+  git tag v1.0.0
+  git push origin v1.0.0
+  ```
+- To auto-publish to the marketplace upon tagging, add `VS_MARKETPLACE_TOKEN` and `OVSX_PAT` in your GitHub repository's **Settings → Secrets and variables → Actions**.
+
+---
+
 ## 📄 License
 
 MIT License — see [LICENSE](LICENSE) for details.

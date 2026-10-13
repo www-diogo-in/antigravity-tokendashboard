@@ -6,10 +6,15 @@
   "publisher": "antigravity",
   "author": "Diogo",
   "license": "MIT",
+  "homepage": "https://github.com/www-diogo-in/antigravity-tokendashboard#readme",
   "repository": {
     "type": "git",
     "url": "https://github.com/www-diogo-in/antigravity-tokendashboard.git"
   },
+  "bugs": {
+    "url": "https://github.com/www-diogo-in/antigravity-tokendashboard/issues"
+  },
+  "qna": "https://github.com/www-diogo-in/antigravity-tokendashboard/issues",
   "categories": [
     "Other",
     "Visualization"
@@ -21,9 +26,27 @@
     "analytics",
     "dashboard",
     "gemini",
-    "co2"
+    "claude",
+    "co2",
+    "ai-usage"
   ],
-  "icon": "assets/icon.svg",
+  "icon": "assets/icon.png",
+  "galleryBanner": {
+    "color": "#080c14",
+    "theme": "dark"
+  },
+  "badges": [
+    {
+      "url": "https://img.shields.io/badge/License-MIT-blue.svg",
+      "href": "https://github.com/www-diogo-in/antigravity-tokendashboard/blob/main/LICENSE",
+      "description": "License"
+    },
+    {
+      "url": "https://img.shields.io/badge/Privacy-100%25%20On--Device-brightgreen.svg",
+      "href": "https://github.com/www-diogo-in/antigravity-tokendashboard#privacy--security-architecture",
+      "description": "Privacy"
+    }
+  ],
   "engines": {
     "vscode": "^1.90.0"
   },
@@ -32,6 +55,38 @@
     "onStartupFinished"
   ],
   "contributes": {
+    "configuration": {
+      "title": "Antigravity Token Intelligence",
+      "properties": {
+        "antigravity.tokenDashboard.defaultRange": {
+          "type": "string",
+          "default": "30d",
+          "enum": [
+            "today",
+            "7d",
+            "30d",
+            "all"
+          ],
+          "enumDescriptions": [
+            "Last 24 hours of telemetry",
+            "Last 7 days of telemetry",
+            "Last 30 days of telemetry",
+            "All-time historical telemetry"
+          ],
+          "description": "Default time period range displayed in KPI overview and status bar."
+        },
+        "antigravity.tokenDashboard.port": {
+          "type": "number",
+          "default": 3333,
+          "description": "Local port number used by the SQLite telemetry analytics server."
+        },
+        "antigravity.tokenDashboard.autoStartServer": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically spawn the local analytics server if not already active."
+        }
+      }
+    },
     "viewsContainers": {
       "activitybar": [
         {

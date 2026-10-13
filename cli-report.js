@@ -7,9 +7,31 @@ const path = require('node:path');
 const os = require('node:os');
 const { DatabaseSync } = require('node:sqlite');
 
+// Base paths & cross-platform resolution
 const HOME = os.homedir();
-const ANTIGRAVITY_DIR = path.join(HOME, '.gemini', 'antigravity-ide');
-const CONVERSATIONS_DIR = path.join(ANTIGRAVITY_DIR, 'conversations');
+
+function resolveAntigravityPaths() {
+  if (process.env.ANTIGRAVITY_DIR && fs.existsSync(process.env.ANTIGRAVITY_DIR)) {
+    return path.join(process.env.ANTIGRAVITY_DIR, 'conversations');
+  }
+  const candidates = [
+    path.join(HOME, '.gemini', 'antigravity-ide'),
+    path.join(HOME, '.antigravity-ide'),
+    path.join(HOME, '.antigravity'),
+    process.env.APPDATA ? path.join(process.env.APPDATA, 'Antigravity IDE') : null,
+    path.join(HOME, 'Library', 'Application Support', 'Antigravity IDE'),
+    path.join(HOME, '.config', 'antigravity-ide')
+  ].filter(Boolean);
+
+  for (const c of candidates) {
+    if (fs.existsSync(path.join(c, 'conversations'))) {
+      return path.join(c, 'conversations');
+    }
+  }
+  return path.join(HOME, '.gemini', 'antigravity-ide', 'conversations');
+}
+
+const CONVERSATIONS_DIR = resolveAntigravityPaths();
 
 const PRICING = {
   'Gemini 3.8 Flash': { inputPerM: 0.075, cachedPerM: 0.01875, outputPerM: 0.30 },

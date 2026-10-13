@@ -14,12 +14,56 @@ const { exec } = require('node:child_process');
 const PORT = parseInt(process.env.PORT || '3333', 10);
 const HOST = '127.0.0.1';
 
-// Base paths
+// Base paths & cross-platform resolution
 const HOME = os.homedir();
-const ANTIGRAVITY_DIR = path.join(HOME, '.gemini', 'antigravity-ide');
-const CONVERSATIONS_DIR = path.join(ANTIGRAVITY_DIR, 'conversations');
-const BRAIN_DIR = path.join(ANTIGRAVITY_DIR, 'brain');
-const INSTALLATION_FILE = path.join(ANTIGRAVITY_DIR, 'installation_id');
+
+function resolveAntigravityPaths() {
+  if (process.env.ANTIGRAVITY_DIR && fs.existsSync(process.env.ANTIGRAVITY_DIR)) {
+    const dir = process.env.ANTIGRAVITY_DIR;
+    return {
+      antigravityDir: dir,
+      conversationsDir: path.join(dir, 'conversations'),
+      brainDir: path.join(dir, 'brain'),
+      installationFile: path.join(dir, 'installation_id')
+    };
+  }
+
+  // Cross-platform candidate paths (Windows, macOS, Linux)
+  const candidates = [
+    path.join(HOME, '.gemini', 'antigravity-ide'),
+    path.join(HOME, '.antigravity-ide'),
+    path.join(HOME, '.antigravity'),
+    process.env.APPDATA ? path.join(process.env.APPDATA, 'Antigravity IDE') : null,
+    path.join(HOME, 'Library', 'Application Support', 'Antigravity IDE'),
+    path.join(HOME, '.config', 'antigravity-ide')
+  ].filter(Boolean);
+
+  for (const c of candidates) {
+    if (fs.existsSync(path.join(c, 'conversations'))) {
+      return {
+        antigravityDir: c,
+        conversationsDir: path.join(c, 'conversations'),
+        brainDir: path.join(c, 'brain'),
+        installationFile: path.join(c, 'installation_id')
+      };
+    }
+  }
+
+  const fallback = path.join(HOME, '.gemini', 'antigravity-ide');
+  return {
+    antigravityDir: fallback,
+    conversationsDir: path.join(fallback, 'conversations'),
+    brainDir: path.join(fallback, 'brain'),
+    installationFile: path.join(fallback, 'installation_id')
+  };
+}
+
+const {
+  antigravityDir: ANTIGRAVITY_DIR,
+  conversationsDir: CONVERSATIONS_DIR,
+  brainDir: BRAIN_DIR,
+  installationFile: INSTALLATION_FILE
+} = resolveAntigravityPaths();
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
 // Pricing per 1,000,000 tokens (USD)
