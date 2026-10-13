@@ -1,4 +1,4 @@
-# Antigravity Token, Cost & CO₂ Intelligence
+# Antigravity IDE Token, Cost & CO₂ Intelligence
 
 > **Native in-IDE and standalone real-time token telemetry, cost analytics, and carbon footprint monitor for Google Antigravity IDE.**
 
