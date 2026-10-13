@@ -3,7 +3,7 @@
   "displayName": "Antigravity Token & Cost Intelligence",
   "description": "Native in-IDE Token, Cost, Prompt Cache & CO2e intelligence dashboard for Antigravity IDE.",
   "version": "1.0.0",
-  "publisher": "antigravity",
+  "publisher": "HashtagPub",
   "author": "Diogo",
   "license": "MIT",
   "homepage": "https://github.com/www-diogo-in/antigravity-tokendashboard#readme",

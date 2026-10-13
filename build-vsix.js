@@ -44,10 +44,13 @@ const contentTypesXml = `<?xml version="1.0" encoding="utf-8"?>
 fs.writeFileSync(path.join(stagingDir, '[Content_Types].xml'), contentTypesXml, 'utf8');
 
 // 2. extension.vsixmanifest
+const pkg = JSON.parse(fs.readFileSync(path.join(extSrcDir, 'package.json'), 'utf8'));
+const publisher = pkg.publisher || 'HashtagPub';
+
 const vsixManifest = `<?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
   <Metadata>
-    <Identity Language="en-US" Id="antigravity-tokendashboard" Version="1.0.0" Publisher="antigravity" />
+    <Identity Language="en-US" Id="${pkg.name || 'antigravity-tokendashboard'}" Version="${pkg.version || '1.0.0'}" Publisher="${publisher}" />
     <DisplayName>Antigravity Token &amp; Cost Intelligence</DisplayName>
     <Description xml:space="preserve">Native in-IDE Token, Cost, Prompt Cache &amp; CO2e intelligence dashboard for Antigravity IDE.</Description>
     <Tags>Antigravity,Tokens,Cost,Intelligence,Gemini,CO2,Dashboard,Usage</Tags>
