@@ -14,33 +14,38 @@ const version = pkg.version;
 
 console.log(`=== Packaging Antigravity IDE Token, CO2e and Cost Dashboard v${version} ===\n`);
 
-const publishers = ['www-diogo-in', 'HashtagPub'];
-
-for (const pub of publishers) {
-  console.log(`--> Building VSIX for publisher: [${pub}]...`);
-  pkg.publisher = pub;
-  fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf8');
-
-  const outFileName = `${pub}.antigravity-tokendashboard-${version}.vsix`;
-  const outPath = path.join(rootDir, outFileName);
-
-  execSync(`cmd /c "cd /d ${extDir} && npx -y @vscode/vsce package --no-dependencies --out ${outPath}"`, {
-    stdio: 'inherit'
-  });
-
-  console.log(`[OK] Successfully created: ${outFileName}`);
-
-  if (pub === 'www-diogo-in') {
-    // Also copy to default un-namespaced name
-    const genericName = `antigravity-tokendashboard-${version}.vsix`;
-    fs.copyFileSync(outPath, path.join(rootDir, genericName));
-    console.log(`[OK] Created copy: ${genericName}`);
-  }
-  console.log('');
-}
-
-// Reset package.json publisher back to www-diogo-in as default
+// 1. Build for Open VSX (publisher: www-diogo-in)
+console.log('--> [1/2] Building for Open VSX Registry (publisher: www-diogo-in)...');
 pkg.publisher = 'www-diogo-in';
 fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf8');
 
+const openVsxOut = path.join(rootDir, `www-diogo-in.antigravity-tokendashboard-${version}.vsix`);
+execSync(`cmd /c "cd /d ${extDir} && npx -y @vscode/vsce package --no-dependencies --out ${openVsxOut}"`, {
+  stdio: 'inherit'
+});
+console.log(`[OK] Created Open VSX package: www-diogo-in.antigravity-tokendashboard-${version}.vsix\n`);
+
+// 2. Build for VS Code Marketplace (publisher: HashtagPub)
+console.log('--> [2/2] Building for VS Code Marketplace (publisher: HashtagPub)...');
+pkg.publisher = 'HashtagPub';
+fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf8');
+
+const vsMarketplaceOut = path.join(rootDir, `HashtagPub.antigravity-tokendashboard-${version}.vsix`);
+execSync(`cmd /c "cd /d ${extDir} && npx -y @vscode/vsce package --no-dependencies --out ${vsMarketplaceOut}"`, {
+  stdio: 'inherit'
+});
+console.log(`[OK] Created VS Code Marketplace package: HashtagPub.antigravity-tokendashboard-${version}.vsix`);
+
+// Also copy HashtagPub package as the default generic package
+const genericOut = path.join(rootDir, `antigravity-tokendashboard-${version}.vsix`);
+fs.copyFileSync(vsMarketplaceOut, genericOut);
+console.log(`[OK] Copied to generic name: antigravity-tokendashboard-${version}.vsix (publisher: HashtagPub)\n`);
+
+// Ensure package.json remains committed with publisher: HashtagPub
+pkg.publisher = 'HashtagPub';
+fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf8');
+
 console.log('=== All VSIX packages built successfully! ===');
+console.log('• For Open VSX:          www-diogo-in.antigravity-tokendashboard-' + version + '.vsix');
+console.log('• For VS Marketplace:    HashtagPub.antigravity-tokendashboard-' + version + '.vsix');
+console.log('• Generic (VS Code):     antigravity-tokendashboard-' + version + '.vsix');
