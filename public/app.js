@@ -490,9 +490,10 @@
       tbody.innerHTML = '';
 
       if (s.turnsTimeline && s.turnsTimeline.length > 0) {
+        const pTable = (overviewData && overviewData.pricingTable) || {};
+        const modelRates = pTable[s.model] || pTable.default || { inputPerM: 0.075, cachedPerM: 0.01875, outputPerM: 0.30 };
         for (const t of s.turnsTimeline) {
-          const rates = { input: 0.075, cached: 0.01875, output: 0.30 }; // per M
-          const turnCost = (t.inputTokens * rates.input + t.cachedTokens * rates.cached + t.outputTokens * rates.output) / 1_000_000;
+          const turnCost = (t.inputTokens * modelRates.inputPerM + t.cachedTokens * modelRates.cachedPerM + t.outputTokens * modelRates.outputPerM) / 1_000_000;
           const turnTokens = t.inputTokens + t.cachedTokens + t.outputTokens;
           const turnCo2 = (turnTokens / 1000) * 0.25;
           const tr = document.createElement('tr');

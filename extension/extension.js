@@ -14,21 +14,76 @@ let pollTimer = null;
 let serverProcess = null;
 const SERVER_PORT = 3333;
 const SERVER_URL = `http://127.0.0.1:${SERVER_PORT}`;
+const EXPECTED_SERVER_VERSION = '1.0.2';
 
 /**
- * Checks if the telemetry server daemon is responding.
+ * Checks if the telemetry server daemon is responding with the current version.
  */
-function isServerRunning(port = SERVER_PORT) {
+function checkServerStatus() {
   return new Promise((resolve) => {
-    const req = http.get(`${SERVER_URL}/api/overview?range=30d`, { timeout: 1000 }, (res) => {
-      resolve(res.statusCode === 200);
+    const req = http.get(`${SERVER_URL}/api/overview?range=today`, { timeout: 1200 }, (res) => {
+      if (res.statusCode !== 200) {
+        return resolve({ running: false, upToDate: false });
+      }
+      let raw = '';
+      res.on('data', chunk => raw += chunk);
+      res.on('end', () => {
+        try {
+          const data = JSON.parse(raw);
+          resolve({
+            running: true,
+            upToDate: data && data.serverVersion === EXPECTED_SERVER_VERSION
+          });
+        } catch (e) {
+          resolve({ running: true, upToDate: false });
+        }
+      });
     });
-    req.on('error', () => resolve(false));
+    req.on('error', () => resolve({ running: false, upToDate: false }));
     req.on('timeout', () => {
       req.destroy();
-      resolve(false);
+      resolve({ running: false, upToDate: false });
     });
   });
+}
+
+async function isServerRunning() {
+  const status = await checkServerStatus();
+  return status.running && status.upToDate;
+}
+
+/**
+ * Stops any existing telemetry daemon on port 3333 (including older detached daemons).
+ */
+async function stopExistingServer() {
+  if (serverProcess) {
+    try { serverProcess.kill(); } catch (e) {}
+    serverProcess = null;
+  }
+
+  // Try graceful HTTP shutdown first
+  await new Promise((resolve) => {
+    const req = http.get(`${SERVER_URL}/api/shutdown`, { timeout: 800 }, () => resolve());
+    req.on('error', () => resolve());
+    req.on('timeout', () => { req.destroy(); resolve(); });
+  });
+
+  await new Promise(r => setTimeout(r, 250));
+  const afterGraceful = await checkServerStatus();
+  if (!afterGraceful.running) return;
+
+  // Fallback for legacy v1.0.0/v1.0.1 daemons without /api/shutdown
+  await new Promise((resolve) => {
+    if (process.platform === 'win32') {
+      child_process.exec(
+        `powershell -NoProfile -Command "$c = Get-NetTCPConnection -LocalPort ${SERVER_PORT} -State Listen -ErrorAction SilentlyContinue; if ($c) { Stop-Process -Id $c.OwningProcess -Force -ErrorAction SilentlyContinue }"`,
+        () => resolve()
+      );
+    } else {
+      child_process.exec(`lsof -ti tcp:${SERVER_PORT} | xargs kill -9 2>/dev/null || true`, () => resolve());
+    }
+  });
+  await new Promise(r => setTimeout(r, 300));
 }
 
 /**
@@ -54,11 +109,14 @@ function fetchServerJson(endpoint) {
 }
 
 /**
- * Spawns server background process if not already running.
+ * Spawns server background process if not already running (or replaces outdated daemon).
  */
 async function ensureServerRunning(context) {
-  const running = await isServerRunning();
-  if (running) return true;
+  const status = await checkServerStatus();
+  if (status.running && status.upToDate) return true;
+  if (status.running && !status.upToDate) {
+    await stopExistingServer();
+  }
 
   const serverScript = path.join(context.extensionPath, 'server.js');
   try {
@@ -822,10 +880,7 @@ async function activate(context) {
   context.subscriptions.push(
     vscode.commands.registerCommand('antigravity.restartTokenServer', async () => {
       vscode.window.showInformationMessage('Restarting Antigravity Token Intelligence daemon...');
-      if (serverProcess) {
-        try { serverProcess.kill(); } catch (e) {}
-        serverProcess = null;
-      }
+      await stopExistingServer();
       await ensureServerRunning(context);
       await updateStatusBar();
       sidebarProvider.updateSidebarData(sidebarProvider.currentRange);

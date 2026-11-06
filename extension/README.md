@@ -23,7 +23,7 @@ Native in-editor telemetry extension for **Google Antigravity IDE**. Gain deep r
 
 ## Architecture
 
-This extension interacts with local Antigravity session SQLite databases located in `~/.gemini/antigravity-ide/conversations/` and processes protobuf turn frames using `node:sqlite`. Zero cloud uploads or external telemetry tracking; everything remains 100% private and on-device.
+This extension interacts with local Antigravity session SQLite databases located in `~/.gemini/antigravity/conversations/` (and legacy `~/.gemini/antigravity-ide/conversations/`) and processes protobuf turn frames using `node:sqlite`. Zero cloud uploads or external telemetry tracking; everything remains 100% private and on-device.
 
 ## 💡 Inspiration & Credits
 

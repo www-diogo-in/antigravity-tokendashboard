@@ -32,17 +32,17 @@ Antigravity IDE handles millions of tokens through deep reasoning, code generati
 
 - **100% On-Device & Private**: This extension communicates exclusively with your local machine (`127.0.0.1:3333`).
 - **No External Telemetry**: Zero analytics, zero cloud logging, zero external network requests.
-- **No API Keys Required**: The dashboard parses session metadata from local SQLite files in `~/.gemini/antigravity-ide/conversations/`. It does not require or touch any API keys.
+- **No API Keys Required**: The dashboard parses session metadata from local SQLite files in `~/.gemini/antigravity/conversations/` (and legacy `~/.gemini/antigravity-ide/conversations/`). It does not require or touch any API keys.
 
 ---
 
 ## 📦 In-IDE Extension Installation
 
 ### Option A: Install via Pre-built VSIX
-1. Download or package `antigravity-tokendashboard-1.0.1.vsix` (or `www-diogo-in.antigravity-tokendashboard-1.0.1.vsix`).
+1. Download or package `antigravity-tokendashboard-1.0.2.vsix` (or `www-diogo-in.antigravity-tokendashboard-1.0.2.vsix`).
 2. Run in terminal:
    ```bash
-   antigravity-ide --install-extension www-diogo-in.antigravity-tokendashboard-1.0.1.vsix
+   antigravity-ide --install-extension www-diogo-in.antigravity-tokendashboard-1.0.2.vsix
    ```
 3. In Antigravity IDE, press `Ctrl+Shift+P` -> `Developer: Reload Window`.
 
@@ -51,7 +51,7 @@ Antigravity IDE handles millions of tokens through deep reasoning, code generati
 git clone https://github.com/www-diogo-in/antigravity-tokendashboard.git
 cd antigravity-tokendashboard
 node build-vsix.js
-antigravity-ide --install-extension www-diogo-in.antigravity-tokendashboard-1.0.1.vsix --force
+antigravity-ide --install-extension www-diogo-in.antigravity-tokendashboard-1.0.2.vsix --force
 ```
 
 ---

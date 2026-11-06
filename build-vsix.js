@@ -6,8 +6,12 @@ const rootDir = __dirname;
 const extDir = path.join(rootDir, 'extension');
 const pkgPath = path.join(extDir, 'package.json');
 
-// Ensure LICENSE is present in extension folder
+// Ensure LICENSE, server.js, and public/* are synced into extension folder
 fs.copyFileSync(path.join(rootDir, 'LICENSE'), path.join(extDir, 'LICENSE'));
+fs.copyFileSync(path.join(rootDir, 'server.js'), path.join(extDir, 'server.js'));
+for (const file of ['index.html', 'app.js', 'styles.css']) {
+  fs.copyFileSync(path.join(rootDir, 'public', file), path.join(extDir, 'public', file));
+}
 
 const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
 const version = pkg.version;

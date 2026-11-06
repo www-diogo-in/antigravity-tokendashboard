@@ -11,11 +11,27 @@ const os = require('node:os');
 const { DatabaseSync } = require('node:sqlite');
 const { exec } = require('node:child_process');
 
+const SERVER_VERSION = '1.0.2';
 const PORT = parseInt(process.env.PORT || '3333', 10);
 const HOST = '127.0.0.1';
 
 // Base paths & cross-platform resolution
 const HOME = os.homedir();
+
+function getLatestDbMtime(convDir) {
+  try {
+    if (!fs.existsSync(convDir)) return 0;
+    const files = fs.readdirSync(convDir).filter(f => f.endsWith('.db') && !f.includes('-shm') && !f.includes('-wal'));
+    let latest = 0;
+    for (const f of files) {
+      const st = fs.statSync(path.join(convDir, f));
+      if (st.mtimeMs > latest) latest = st.mtimeMs;
+    }
+    return latest;
+  } catch (e) {
+    return 0;
+  }
+}
 
 function resolveAntigravityPaths() {
   if (process.env.ANTIGRAVITY_DIR && fs.existsSync(process.env.ANTIGRAVITY_DIR)) {
@@ -23,37 +39,57 @@ function resolveAntigravityPaths() {
     return {
       antigravityDir: dir,
       conversationsDir: path.join(dir, 'conversations'),
-      brainDir: path.join(dir, 'brain'),
+      conversationsDirs: [path.join(dir, 'conversations')],
+      brainDirs: [path.join(dir, 'brain')],
+      summariesDbFile: path.join(dir, 'conversation_summaries.db'),
       installationFile: path.join(dir, 'installation_id')
     };
   }
 
-  // Cross-platform candidate paths (Windows, macOS, Linux)
+  // Cross-platform candidate paths (Antigravity 2.0+ ~/.gemini/antigravity first, plus legacy paths)
   const candidates = [
+    path.join(HOME, '.gemini', 'antigravity'),
     path.join(HOME, '.gemini', 'antigravity-ide'),
-    path.join(HOME, '.antigravity-ide'),
     path.join(HOME, '.antigravity'),
+    path.join(HOME, '.antigravity-ide'),
+    process.env.APPDATA ? path.join(process.env.APPDATA, 'Antigravity') : null,
     process.env.APPDATA ? path.join(process.env.APPDATA, 'Antigravity IDE') : null,
+    path.join(HOME, 'Library', 'Application Support', 'Antigravity'),
     path.join(HOME, 'Library', 'Application Support', 'Antigravity IDE'),
+    path.join(HOME, '.config', 'antigravity'),
     path.join(HOME, '.config', 'antigravity-ide')
   ].filter(Boolean);
 
+  const validDirs = [];
   for (const c of candidates) {
-    if (fs.existsSync(path.join(c, 'conversations'))) {
-      return {
-        antigravityDir: c,
-        conversationsDir: path.join(c, 'conversations'),
-        brainDir: path.join(c, 'brain'),
-        installationFile: path.join(c, 'installation_id')
-      };
+    const convDir = path.join(c, 'conversations');
+    if (fs.existsSync(convDir)) {
+      const latestMtime = getLatestDbMtime(convDir);
+      validDirs.push({ baseDir: c, convDir, latestMtime });
     }
   }
 
-  const fallback = path.join(HOME, '.gemini', 'antigravity-ide');
+  if (validDirs.length > 0) {
+    // Sort by newest .db activity so the active Antigravity directory is always primary
+    validDirs.sort((a, b) => b.latestMtime - a.latestMtime);
+    const primary = validDirs[0].baseDir;
+    return {
+      antigravityDir: primary,
+      conversationsDir: path.join(primary, 'conversations'),
+      conversationsDirs: validDirs.map(v => v.convDir),
+      brainDirs: validDirs.map(v => path.join(v.baseDir, 'brain')),
+      summariesDbFile: path.join(primary, 'conversation_summaries.db'),
+      installationFile: path.join(primary, 'installation_id')
+    };
+  }
+
+  const fallback = path.join(HOME, '.gemini', 'antigravity');
   return {
     antigravityDir: fallback,
     conversationsDir: path.join(fallback, 'conversations'),
-    brainDir: path.join(fallback, 'brain'),
+    conversationsDirs: [path.join(fallback, 'conversations')],
+    brainDirs: [path.join(fallback, 'brain')],
+    summariesDbFile: path.join(fallback, 'conversation_summaries.db'),
     installationFile: path.join(fallback, 'installation_id')
   };
 }
@@ -61,22 +97,48 @@ function resolveAntigravityPaths() {
 const {
   antigravityDir: ANTIGRAVITY_DIR,
   conversationsDir: CONVERSATIONS_DIR,
-  brainDir: BRAIN_DIR,
+  conversationsDirs: CONVERSATIONS_DIRS,
+  brainDirs: BRAIN_DIRS,
+  summariesDbFile: SUMMARIES_DB_FILE,
   installationFile: INSTALLATION_FILE
 } = resolveAntigravityPaths();
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
 // Pricing per 1,000,000 tokens (USD)
 const PRICING = {
+  'Gemini 4 Argon': { inputPerM: 0.15, cachedPerM: 0.0375, outputPerM: 0.60 },
   'Gemini 3.8 Flash': { inputPerM: 0.075, cachedPerM: 0.01875, outputPerM: 0.30 },
   'Gemini 3.7 Flash': { inputPerM: 0.075, cachedPerM: 0.01875, outputPerM: 0.30 },
+  'Gemini 3.6 Flash': { inputPerM: 0.075, cachedPerM: 0.01875, outputPerM: 0.30 },
+  'Gemini 3.5 Flash': { inputPerM: 0.075, cachedPerM: 0.01875, outputPerM: 0.30 },
+  'Gemini 3.0 Flash': { inputPerM: 0.075, cachedPerM: 0.01875, outputPerM: 0.30 },
   'Gemini 2.5 Flash': { inputPerM: 0.075, cachedPerM: 0.01875, outputPerM: 0.30 },
   'Gemini 2.5 Pro': { inputPerM: 1.25, cachedPerM: 0.3125, outputPerM: 5.00 },
   'Gemini 1.5 Pro': { inputPerM: 1.25, cachedPerM: 0.3125, outputPerM: 5.00 },
+  'Claude Sonnet 4.6': { inputPerM: 3.00, cachedPerM: 0.30, outputPerM: 15.00 },
   'Claude 3.7 Sonnet': { inputPerM: 3.00, cachedPerM: 0.30, outputPerM: 15.00 },
   'Claude': { inputPerM: 3.00, cachedPerM: 0.30, outputPerM: 15.00 },
   'default': { inputPerM: 0.075, cachedPerM: 0.01875, outputPerM: 0.30 }
 };
+
+function getRatesForModel(model) {
+  if (!model) return PRICING.default;
+  if (PRICING[model]) return PRICING[model];
+  const lower = model.toLowerCase();
+  if (lower.includes('claude') && lower.includes('opus')) {
+    return { inputPerM: 15.00, cachedPerM: 1.50, outputPerM: 75.00 };
+  }
+  if (lower.includes('claude')) {
+    return PRICING['Claude Sonnet 4.6'];
+  }
+  if (lower.includes('argon') || lower.includes('gemini 4')) {
+    return PRICING['Gemini 4 Argon'];
+  }
+  if (lower.includes('pro') || lower.includes('ultra')) {
+    return PRICING['Gemini 2.5 Pro'];
+  }
+  return PRICING.default;
+}
 
 // In-memory cache for parsed sessions to make requests instant
 const sessionCache = new Map();
@@ -101,6 +163,7 @@ function getTimestamp(buf) {
     const end = Math.min(buf.length, posAfter + len);
     while (pos < end) {
       const [tagWire, newPos] = decodeVarint(buf, pos);
+      if (newPos <= pos) break;
       pos = newPos;
       const wire = tagWire & 7;
       const field = tagWire >> 3;
@@ -124,6 +187,7 @@ function getTokenMetrics(buf) {
   let pos = 0;
   while (pos < buf.length) {
     const [tagWire, newPos] = decodeVarint(buf, pos);
+    if (newPos <= pos) break;
     pos = newPos;
     const wire = tagWire & 7;
     const field = tagWire >> 3;
@@ -136,6 +200,7 @@ function getTokenMetrics(buf) {
         let inputTokens = 0, cachedTokens = 0, outputTokens = 0, thinkingTokens = 0;
         while (subPos < sub.length) {
           const [sTag, nextSubPos] = decodeVarint(sub, subPos);
+          if (nextSubPos <= subPos) break;
           subPos = nextSubPos;
           const sWire = sTag & 7;
           const sField = sTag >> 3;
@@ -156,7 +221,7 @@ function getTokenMetrics(buf) {
         return { inputTokens, cachedTokens, outputTokens, thinkingTokens };
       }
     } else if (wire === 0) {
-      const [val, nextPos] = decodeVarint(buf, pos);
+      const [, nextPos] = decodeVarint(buf, pos);
       pos = nextPos;
     } else if (wire === 1) {
       pos += 8;
@@ -169,18 +234,92 @@ function getTokenMetrics(buf) {
   return null;
 }
 
+function parseGenMetaModel(buf) {
+  if (!buf) return null;
+  let pos = 0;
+  let modelId = null;
+  let modelName = null;
+  while (pos < buf.length) {
+    const [tagWire, newPos] = decodeVarint(buf, pos);
+    if (newPos <= pos) break;
+    pos = newPos;
+    const wire = tagWire & 7;
+    const field = tagWire >> 3;
+    if (wire === 2) {
+      const [len, dataPos] = decodeVarint(buf, pos);
+      pos = dataPos + len;
+      if (field === 1 && dataPos + len <= buf.length) {
+        const sub = buf.subarray(dataPos, dataPos + len);
+        let sPos = 0;
+        while (sPos < sub.length) {
+          const [sTag, nextSPos] = decodeVarint(sub, sPos);
+          if (nextSPos <= sPos) break;
+          sPos = nextSPos;
+          const sWire = sTag & 7;
+          const sField = sTag >> 3;
+          if (sWire === 2) {
+            const [sLen, sDataPos] = decodeVarint(sub, sPos);
+            sPos = sDataPos + sLen;
+            if (sDataPos + sLen <= sub.length) {
+              if (sField === 19) modelId = sub.subarray(sDataPos, sDataPos + sLen).toString('utf8').trim();
+              else if (sField === 21) modelName = sub.subarray(sDataPos, sDataPos + sLen).toString('utf8').trim();
+            }
+          } else if (sWire === 0) {
+            const [, endPos] = decodeVarint(sub, sPos);
+            sPos = endPos;
+          } else if (sWire === 1) {
+            sPos += 8;
+          } else if (sWire === 5) {
+            sPos += 4;
+          } else {
+            break;
+          }
+        }
+      }
+    } else if (wire === 0) {
+      const [, nextPos] = decodeVarint(buf, pos);
+      pos = nextPos;
+    } else if (wire === 1) {
+      pos += 8;
+    } else if (wire === 5) {
+      pos += 4;
+    } else {
+      break;
+    }
+  }
+  return { modelId, modelName };
+}
+
+function normalizeModelLabel(modelId, modelName, rawStr) {
+  if (modelName) {
+    const cleaned = modelName.replace(/\s*\((?:Low|Medium|High|Minimal|Thinking|Fast|Standard)\)$/i, '').trim();
+    if (cleaned) return cleaned;
+  }
+  const src = `${modelId || ''} ${rawStr || ''}`.toLowerCase();
+  if (src.includes('gemini-4-argon') || src.includes('gemini 4 argon')) return 'Gemini 4 Argon';
+  if (src.includes('gemini-3.8-flash')) return 'Gemini 3.8 Flash';
+  if (src.includes('gemini-3.7-flash')) return 'Gemini 3.7 Flash';
+  if (src.includes('gemini-3.6-flash')) return 'Gemini 3.6 Flash';
+  if (src.includes('gemini-3.5-flash') || src.includes('gemini-default')) return 'Gemini 3.5 Flash';
+  if (src.includes('gemini-3-flash')) return 'Gemini 3.0 Flash';
+  if (src.includes('gemini-2.5-flash')) return 'Gemini 2.5 Flash';
+  if (src.includes('gemini-2.5-pro') || src.includes('gemini-1.5-pro') || src.includes('gemini-pro')) return 'Gemini 2.5 Pro';
+  if (src.includes('claude-sonnet-4-6') || src.includes('claude-4')) return 'Claude Sonnet 4.6';
+  if (src.includes('claude-3-7-sonnet') || src.includes('claude-sonnet')) return 'Claude 3.7 Sonnet';
+  if (src.includes('claude')) return 'Claude';
+  return null;
+}
+
 function detectModel(db) {
   try {
-    const rows = db.prepare('SELECT data FROM gen_metadata LIMIT 10').all();
+    const rows = db.prepare('SELECT data FROM gen_metadata ORDER BY idx DESC LIMIT 25').all();
     for (const r of rows) {
       if (!r.data) continue;
-      const str = Buffer.from(r.data).toString('latin1');
-      if (str.includes('gemini-3.8-flash')) return 'Gemini 3.8 Flash';
-      if (str.includes('gemini-3.7-flash')) return 'Gemini 3.7 Flash';
-      if (str.includes('gemini-2.5-flash')) return 'Gemini 2.5 Flash';
-      if (str.includes('gemini-2.5-pro') || str.includes('gemini-1.5-pro')) return 'Gemini 2.5 Pro';
-      if (str.includes('claude-3-7-sonnet') || str.includes('claude-sonnet')) return 'Claude 3.7 Sonnet';
-      if (str.includes('claude')) return 'Claude';
+      const buf = Buffer.from(r.data);
+      const parsed = parseGenMetaModel(buf);
+      const str = buf.toString('latin1');
+      const label = normalizeModelLabel(parsed ? parsed.modelId : null, parsed ? parsed.modelName : null, str);
+      if (label) return label;
     }
   } catch (e) {}
   return 'Gemini 3.8 Flash';
@@ -195,34 +334,72 @@ function getInstallationId() {
   return 'local-user';
 }
 
-function extractPromptTitle(id, db) {
-  // First attempt: read transcript.jsonl
+function loadSummariesMap() {
+  const map = new Map();
+  if (!SUMMARIES_DB_FILE || !fs.existsSync(SUMMARIES_DB_FILE)) return map;
+  let db;
   try {
-    const tPath = path.join(BRAIN_DIR, id, '.system_generated', 'logs', 'transcript.jsonl');
-    if (fs.existsSync(tPath)) {
-      const firstLine = fs.readFileSync(tPath, 'utf8').split('\n')[0];
-      if (firstLine) {
-        const obj = JSON.parse(firstLine);
-        if (obj.content) {
-          const m = obj.content.match(/<USER_REQUEST>([\s\S]*?)<\/USER_REQUEST>/);
-          if (m) {
-            return m[1].trim().replace(/\r?\n+/g, ' ').slice(0, 100);
+    db = new DatabaseSync(SUMMARIES_DB_FILE, { open: true, readOnly: true });
+    const rows = db.prepare('SELECT conversation_id, title, preview FROM conversation_summaries').all();
+    for (const r of rows) {
+      const label = (r.title && r.title.trim()) || (r.preview && r.preview.trim());
+      if (r.conversation_id && label) {
+        map.set(r.conversation_id, label.replace(/\r?\n+/g, ' ').slice(0, 100));
+      }
+    }
+  } catch (e) {
+  } finally {
+    if (db) {
+      try { db.close(); } catch (e) {}
+    }
+  }
+  return map;
+}
+
+function extractPromptTitle(id, db, summariesMap) {
+  // 1. Check Antigravity conversation_summaries.db first
+  if (summariesMap && summariesMap.has(id)) {
+    return summariesMap.get(id);
+  }
+
+  // 2. Check transcript.jsonl across known brain directories
+  for (const bDir of BRAIN_DIRS) {
+    try {
+      const tPath = path.join(bDir, id, '.system_generated', 'logs', 'transcript.jsonl');
+      if (fs.existsSync(tPath)) {
+        const lines = fs.readFileSync(tPath, 'utf8').split('\n').slice(0, 10);
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          const obj = JSON.parse(line);
+          if (obj.content) {
+            const m = obj.content.match(/<USER_REQUEST>([\s\S]*?)<\/USER_REQUEST>/);
+            if (m && m[1].trim()) {
+              return m[1].trim().replace(/\r?\n+/g, ' ').slice(0, 100);
+            }
+            if (obj.type === 'USER_INPUT' && obj.content.trim()) {
+              return obj.content.trim().replace(/\r?\n+/g, ' ').slice(0, 100);
+            }
           }
-          return obj.content.trim().slice(0, 100);
+        }
+      }
+    } catch (e) {}
+  }
+
+  // 3. Fallback: examine initial steps in db
+  try {
+    const rows = db.prepare('SELECT step_payload FROM steps WHERE idx <= 5 ORDER BY idx ASC').all();
+    for (const r of rows) {
+      if (r && r.step_payload) {
+        const str = Buffer.from(r.step_payload).toString('utf8');
+        const m = str.match(/<USER_REQUEST>([\s\S]*?)<\/USER_REQUEST>/);
+        if (m && m[1].trim()) {
+          return m[1].trim().replace(/\r?\n+/g, ' ').slice(0, 100);
         }
       }
     }
-  } catch (e) {}
-
-  // Fallback: examine step 0 in db
-  try {
-    const r = db.prepare('SELECT step_payload FROM steps WHERE idx = 0').get();
-    if (r && r.step_payload) {
-      const str = Buffer.from(r.step_payload).toString('utf8');
-      const m = str.match(/<USER_REQUEST>([\s\S]*?)<\/USER_REQUEST>/);
-      if (m) {
-        return m[1].trim().replace(/\r?\n+/g, ' ').slice(0, 100);
-      }
+    const r0 = rows[0];
+    if (r0 && r0.step_payload) {
+      const str = Buffer.from(r0.step_payload).toString('utf8');
       const words = str.replace(/[^\x20-\x7E]/g, ' ').split(/\s+/).filter(w => w.length > 2);
       if (words.length > 3) {
         return words.slice(3, 18).join(' ').slice(0, 100);
@@ -233,110 +410,160 @@ function extractPromptTitle(id, db) {
   return `Conversation ${id.slice(0, 8)}`;
 }
 
-function parseSession(dbFile) {
-  const id = path.basename(dbFile, '.db');
-  const dbPath = path.join(CONVERSATIONS_DIR, dbFile);
-
+function getEffectiveMtime(dbPath) {
   const stats = fs.statSync(dbPath);
-  const mtime = stats.mtimeMs;
+  let mtime = stats.mtimeMs;
+  try {
+    const walPath = `${dbPath}-wal`;
+    if (fs.existsSync(walPath)) {
+      const walStats = fs.statSync(walPath);
+      if (walStats.mtimeMs > mtime) mtime = walStats.mtimeMs;
+    }
+  } catch (e) {}
+  return { mtime, birthtimeMs: stats.birthtimeMs };
+}
+
+function parseSession(dbPath, summariesMap) {
+  const id = path.basename(dbPath, '.db');
+  const { mtime, birthtimeMs } = getEffectiveMtime(dbPath);
 
   const cached = sessionCache.get(id);
   if (cached && cached.mtime === mtime) {
+    if (summariesMap && summariesMap.has(id) && cached.data.title.startsWith('Conversation ')) {
+      cached.data.title = summariesMap.get(id);
+    }
     return cached.data;
   }
 
   let db;
   try {
     db = new DatabaseSync(dbPath, { open: true, readOnly: true });
+    const model = detectModel(db);
+    const title = extractPromptTitle(id, db, summariesMap);
+
+    const rows = db.prepare('SELECT idx, metadata, step_type FROM steps ORDER BY idx ASC').all();
+    let firstTs = null;
+    let lastTs = null;
+    let inputTokens = 0;
+    let cachedTokens = 0;
+    let outputTokens = 0;
+    let thinkingTokens = 0;
+    let agentTurns = 0;
+    let toolSteps = 0;
+
+    const turnsTimeline = [];
+
+    for (const r of rows) {
+      const ts = getTimestamp(r.metadata ? Buffer.from(r.metadata) : null);
+      if (ts) {
+        if (!firstTs || ts < firstTs) firstTs = ts;
+        if (!lastTs || ts > lastTs) lastTs = ts;
+      }
+
+      if (r.step_type === 15) { // PLANNER_RESPONSE turn
+        agentTurns++;
+        const metrics = getTokenMetrics(r.metadata ? Buffer.from(r.metadata) : null);
+        if (metrics) {
+          inputTokens += metrics.inputTokens;
+          cachedTokens += metrics.cachedTokens;
+          outputTokens += metrics.outputTokens;
+          thinkingTokens += metrics.thinkingTokens;
+
+          turnsTimeline.push({
+            stepIdx: r.idx,
+            timestamp: ts ? new Date(ts * 1000).toISOString() : null,
+            inputTokens: metrics.inputTokens,
+            cachedTokens: metrics.cachedTokens,
+            outputTokens: metrics.outputTokens,
+            thinkingTokens: metrics.thinkingTokens
+          });
+        }
+      } else if (r.step_type > 15 && r.step_type < 98) {
+        toolSteps++;
+      }
+    }
+
+    const rates = getRatesForModel(model);
+    const actualCost = (inputTokens * rates.inputPerM + cachedTokens * rates.cachedPerM + outputTokens * rates.outputPerM) / 1_000_000;
+    const uncachedCost = ((inputTokens + cachedTokens) * rates.inputPerM + outputTokens * rates.outputPerM) / 1_000_000;
+    const savings = Math.max(0, uncachedCost - actualCost);
+    const totalTokens = inputTokens + cachedTokens + outputTokens;
+    const co2Grams = (totalTokens / 1000) * 0.25;
+
+    const data = {
+      id,
+      title,
+      model,
+      createdAt: firstTs ? new Date(firstTs * 1000).toISOString() : new Date(birthtimeMs).toISOString(),
+      updatedAt: lastTs ? new Date(lastTs * 1000).toISOString() : new Date(mtime).toISOString(),
+      totalSteps: rows.length,
+      agentTurns,
+      toolSteps,
+      inputTokens,
+      cachedTokens,
+      outputTokens,
+      thinkingTokens,
+      textTokens: Math.max(0, outputTokens - thinkingTokens),
+      totalTokens,
+      cacheHitRate: totalTokens > 0 ? ((cachedTokens / (inputTokens + cachedTokens || 1)) * 100) : 0,
+      cost: actualCost,
+      uncachedCost,
+      savings,
+      co2Grams,
+      turnsTimeline
+    };
+
+    sessionCache.set(id, { mtime, data });
+    return data;
   } catch (e) {
     return cached ? cached.data : null;
-  }
-
-  const model = detectModel(db);
-  const title = extractPromptTitle(id, db);
-
-  const rows = db.prepare('SELECT idx, metadata, step_type FROM steps ORDER BY idx ASC').all();
-  let firstTs = null;
-  let lastTs = null;
-  let inputTokens = 0;
-  let cachedTokens = 0;
-  let outputTokens = 0;
-  let thinkingTokens = 0;
-  let agentTurns = 0;
-  let toolSteps = 0;
-
-  const turnsTimeline = [];
-
-  for (const r of rows) {
-    const ts = getTimestamp(r.metadata ? Buffer.from(r.metadata) : null);
-    if (ts) {
-      if (!firstTs || ts < firstTs) firstTs = ts;
-      if (!lastTs || ts > lastTs) lastTs = ts;
+  } finally {
+    if (db) {
+      try { db.close(); } catch (e) {}
     }
+  }
+}
 
-    if (r.step_type === 15) { // PLANNER_RESPONSE turn
-      agentTurns++;
-      const metrics = getTokenMetrics(r.metadata ? Buffer.from(r.metadata) : null);
-      if (metrics) {
-        inputTokens += metrics.inputTokens;
-        cachedTokens += metrics.cachedTokens;
-        outputTokens += metrics.outputTokens;
-        thinkingTokens += metrics.thinkingTokens;
-
-        turnsTimeline.push({
-          stepIdx: r.idx,
-          timestamp: ts ? new Date(ts * 1000).toISOString() : null,
-          inputTokens: metrics.inputTokens,
-          cachedTokens: metrics.cachedTokens,
-          outputTokens: metrics.outputTokens,
-          thinkingTokens: metrics.thinkingTokens
-        });
+function resolveSessionDbFile(id) {
+  const fileName = `${id}.db`;
+  let bestPath = null;
+  let bestMtime = -1;
+  for (const convDir of CONVERSATIONS_DIRS) {
+    const candidate = path.join(convDir, fileName);
+    if (fs.existsSync(candidate)) {
+      const { mtime } = getEffectiveMtime(candidate);
+      if (mtime > bestMtime) {
+        bestMtime = mtime;
+        bestPath = candidate;
       }
-    } else if (r.step_type > 15 && r.step_type < 98) {
-      toolSteps++;
     }
   }
-
-  const rates = PRICING[model] || PRICING.default;
-  const actualCost = (inputTokens * rates.inputPerM + cachedTokens * rates.cachedPerM + outputTokens * rates.outputPerM) / 1_000_000;
-  const uncachedCost = ((inputTokens + cachedTokens) * rates.inputPerM + outputTokens * rates.outputPerM) / 1_000_000;
-  const savings = Math.max(0, uncachedCost - actualCost);
-  const totalTokens = inputTokens + cachedTokens + outputTokens;
-  const co2Grams = (totalTokens / 1000) * 0.25;
-
-  const data = {
-    id,
-    title,
-    model,
-    createdAt: firstTs ? new Date(firstTs * 1000).toISOString() : new Date(stats.birthtimeMs).toISOString(),
-    updatedAt: lastTs ? new Date(lastTs * 1000).toISOString() : new Date(mtime).toISOString(),
-    totalSteps: rows.length,
-    agentTurns,
-    toolSteps,
-    inputTokens,
-    cachedTokens,
-    outputTokens,
-    thinkingTokens,
-    textTokens: Math.max(0, outputTokens - thinkingTokens),
-    totalTokens,
-    cacheHitRate: totalTokens > 0 ? ((cachedTokens / (inputTokens + cachedTokens || 1)) * 100) : 0,
-    cost: actualCost,
-    uncachedCost,
-    savings,
-    co2Grams,
-    turnsTimeline
-  };
-
-  sessionCache.set(id, { mtime, data });
-  return data;
+  return bestPath;
 }
 
 function scanAllSessions() {
-  if (!fs.existsSync(CONVERSATIONS_DIR)) return [];
-  const files = fs.readdirSync(CONVERSATIONS_DIR).filter(f => f.endsWith('.db') && !f.includes('-shm') && !f.includes('-wal'));
+  const summariesMap = loadSummariesMap();
+  const dbFilesById = new Map();
+
+  for (const convDir of CONVERSATIONS_DIRS) {
+    if (!fs.existsSync(convDir)) continue;
+    const files = fs.readdirSync(convDir).filter(f => f.endsWith('.db') && !f.includes('-shm') && !f.includes('-wal'));
+    for (const f of files) {
+      const id = path.basename(f, '.db');
+      const fullPath = path.join(convDir, f);
+      try {
+        const { mtime } = getEffectiveMtime(fullPath);
+        const existing = dbFilesById.get(id);
+        if (!existing || mtime > existing.mtime) {
+          dbFilesById.set(id, { fullPath, mtime });
+        }
+      } catch (e) {}
+    }
+  }
+
   const results = [];
-  for (const f of files) {
-    const s = parseSession(f);
+  for (const { fullPath } of dbFilesById.values()) {
+    const s = parseSession(fullPath, summariesMap);
     if (s && s.totalTokens > 0) {
       results.push(s);
     }
@@ -375,6 +602,7 @@ function handleApiOverview(req, res, url) {
   let totalTurns = 0;
 
   const modelBreakdown = {};
+  const dynamicPricingTable = { ...PRICING };
 
   for (const s of sessions) {
     inputTokens += s.inputTokens;
@@ -387,6 +615,10 @@ function handleApiOverview(req, res, url) {
     totalSavings += s.savings;
     co2Grams += s.co2Grams;
     totalTurns += s.agentTurns;
+
+    if (!dynamicPricingTable[s.model]) {
+      dynamicPricingTable[s.model] = getRatesForModel(s.model);
+    }
 
     if (!modelBreakdown[s.model]) {
       modelBreakdown[s.model] = {
@@ -418,6 +650,8 @@ function handleApiOverview(req, res, url) {
     : 0;
 
   const response = {
+    serverVersion: SERVER_VERSION,
+    monitoredDir: CONVERSATIONS_DIR,
     installationId: getInstallationId(),
     range,
     totalSessions: sessions.length,
@@ -441,7 +675,7 @@ function handleApiOverview(req, res, url) {
       streamingHours: Math.round((co2Grams / 36) * 10) / 10
     },
     models: Object.values(modelBreakdown).sort((a, b) => b.cost - a.cost),
-    pricingTable: PRICING
+    pricingTable: dynamicPricingTable
   };
 
   res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -457,6 +691,7 @@ function handleApiSeries(req, res, url) {
   const buckets = {};
 
   for (const s of sessions) {
+    const rates = getRatesForModel(s.model);
     for (const t of s.turnsTimeline) {
       if (!t.timestamp) continue;
       const d = new Date(t.timestamp);
@@ -488,7 +723,6 @@ function handleApiSeries(req, res, url) {
       b.totalTokens += t.inputTokens + t.cachedTokens + t.outputTokens;
       b.turns += 1;
 
-      const rates = PRICING[s.model] || PRICING.default;
       b.cost += (t.inputTokens * rates.inputPerM + t.cachedTokens * rates.cachedPerM + t.outputTokens * rates.outputPerM) / 1_000_000;
     }
   }
@@ -550,13 +784,14 @@ function handleApiSessions(req, res, url) {
 }
 
 function handleApiSessionDetail(req, res, id) {
-  const dbFile = `${id}.db`;
-  if (!fs.existsSync(path.join(CONVERSATIONS_DIR, dbFile))) {
+  const dbPath = resolveSessionDbFile(id);
+  if (!dbPath) {
     res.writeHead(404, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify({ error: 'Session not found' }));
   }
 
-  const session = parseSession(dbFile);
+  const summariesMap = loadSummariesMap();
+  const session = parseSession(dbPath, summariesMap);
   res.writeHead(200, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify(session));
 }
@@ -630,6 +865,12 @@ const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify({ status: 'ok', reloadedAt: new Date().toISOString() }));
   }
+  if (pathname === '/api/shutdown') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ status: 'shutting_down' }));
+    setTimeout(() => process.exit(0), 100);
+    return;
+  }
 
   // Fallback to static assets
   serveStatic(req, res, pathname);
@@ -638,9 +879,9 @@ const server = http.createServer((req, res) => {
 server.listen(PORT, HOST, () => {
   const url = `http://${HOST}:${PORT}`;
   console.log(`=======================================================`);
-  console.log(`  Antigravity Token & Cost Dashboard is running!`);
+  console.log(`  Antigravity Token & Cost Dashboard v${SERVER_VERSION} is running!`);
   console.log(`  URL: ${url}`);
-  console.log(`  Monitoring: ${CONVERSATIONS_DIR}`);
+  console.log(`  Monitoring: ${CONVERSATIONS_DIRS.join(', ')}`);
   console.log(`=======================================================`);
 
   if (process.argv.includes('--open')) {
