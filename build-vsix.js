@@ -24,7 +24,8 @@ pkg.publisher = 'www-diogo-in';
 fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf8');
 
 const openVsxOut = path.join(rootDir, `www-diogo-in.antigravity-tokendashboard-${version}.vsix`);
-execSync(`cmd /c "cd /d ${extDir} && npx -y @vscode/vsce package --no-dependencies --out ${openVsxOut}"`, {
+execSync(`npx -y @vscode/vsce package --no-dependencies --out "${openVsxOut}"`, {
+  cwd: extDir,
   stdio: 'inherit'
 });
 console.log(`[OK] Created Open VSX package: www-diogo-in.antigravity-tokendashboard-${version}.vsix\n`);
@@ -35,7 +36,8 @@ pkg.publisher = 'HashtagPub';
 fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf8');
 
 const vsMarketplaceOut = path.join(rootDir, `HashtagPub.antigravity-tokendashboard-${version}.vsix`);
-execSync(`cmd /c "cd /d ${extDir} && npx -y @vscode/vsce package --no-dependencies --out ${vsMarketplaceOut}"`, {
+execSync(`npx -y @vscode/vsce package --no-dependencies --out "${vsMarketplaceOut}"`, {
+  cwd: extDir,
   stdio: 'inherit'
 });
 console.log(`[OK] Created VS Code Marketplace package: HashtagPub.antigravity-tokendashboard-${version}.vsix`);

@@ -27,15 +27,17 @@ jobs:
 
       - name: Package Extension VSIX
         run: |
-          cd extension
-          vsce package --no-dependencies --out ../antigravity-tokendashboard.vsix
+          node build-vsix.js
+          cp antigravity-tokendashboard-*.vsix antigravity-tokendashboard.vsix
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
           name: Release ${{ github.ref_name }}
-          files: antigravity-tokendashboard.vsix
+          files: |
+            antigravity-tokendashboard.vsix
+            *.vsix
           draft: false
           prerelease: false
           generate_release_notes: true
